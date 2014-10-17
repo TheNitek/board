@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="board">
+    <head>
+        <title>Online Board</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="js/angular.min.js"></script>
+        <script src="js/angular-route.min.js"></script>
+    </head>
+    <body>
+        <div ng-view></div>
+
+        <script>
+                    var module = angular.module("board", ['ngRoute']);
+
+                    module.config(['$routeProvider',
+                        function ($routeProvider) {
+                            $routeProvider.
+                                    when('/board/:uuid', {
+                                        templateUrl: 'tpl/board.html',
+                                        controller: 'RouteController'
+                                    }).
+                                    when('/', {
+                                        templateUrl: 'tpl/create_board.html',
+                                        controller: 'CreateBoardController'
+                                    }).
+                                    otherwise({
+                                        redirectTo: '/'
+                                    });
+                        }
+                    ]);
+
+                    module.controller("CreateBoardController", function ($scope, $http, $location) {
+
+                        $scope.createBoardForm = {};
+
+                        $scope.createBoardForm.submitTheForm = function (item, event) {
+                            var responsePromise = $http.post("boards", {}, {});
+                            responsePromise.success(function (dataFromServer, status, headers, config) {
+                                $location.path("/board/" + dataFromServer.uuid);
+                                console.log(dataFromServer);
+                            });
+                            responsePromise.error(function (data, status, headers, config) {
+                                alert("Submitting form failed!");
+                            });
+                        };
+                    });
+
+                    module.controller("RouteController", function ($scope, $routeParams) {
+                        $scope.uuid = $routeParams.uuid;
+                        alert($scope.uuid);
+                    });
+        </script>
+
+    </body>
+</html>
