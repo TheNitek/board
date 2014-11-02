@@ -10,14 +10,14 @@ import org.springframework.stereotype.Service;
 public class BoardService {
 
     @Inject
-    private BoardRepository domainRepo;
+    private BoardRepository boardRepo;
 
     public Board get(UUID id) {
-        return domainRepo.findById(id);
+        return boardRepo.findById(id);
     }
     
     public void save(Board board){
-        domainRepo.save(board);
+        boardRepo.save(board);
     }
 
 }

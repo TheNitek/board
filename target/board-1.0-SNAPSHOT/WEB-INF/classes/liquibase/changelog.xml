@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+    
+    <changeSet id="create-base-structure" author="Nitek">
+        <createTable tableName="board">
+            <column name="uuid" type="BINARY(16)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+        </createTable>
+        
+        <createTable tableName="post">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="content" type="LONGTEXT">
+                <constraints nullable="false" />
+            </column>
+            <column name="x" type="INT">
+                <constraints nullable="false" />
+            </column>
+            <column name="y" type="INT">
+                <constraints nullable="false" />
+            </column>
+            <column name="board_uuid" type="BINARY(16)">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <modifySql dbms="mysql">
+            <append value="ENGINE=INNODB  CHARSET=UTF8 COLLATE utf8_general_ci"/>
+        </modifySql>        
+    </changeSet>
+  
+</databaseChangeLog>

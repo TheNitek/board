@@ -14,6 +14,9 @@ public class BoardController {
 
     @Inject
     BoardService boardService;
+    
+    @Inject
+    PostService postService;
 
     @RequestMapping(value = "/boards/{id}")
     @ResponseBody
