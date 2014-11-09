@@ -12,6 +12,9 @@ public class Position implements Serializable {
 
     @NotNull
     private int y;
+    
+    @NotNull
+    private int z;
 
     public int getX() {
         return x;
@@ -27,6 +30,14 @@ public class Position implements Serializable {
 
     public void setY(int y) {
         this.y = y;
+    }
+
+    public int getZ() {
+        return z;
+    }
+
+    public void setZ(int z) {
+        this.z = z;
     }
 
 }

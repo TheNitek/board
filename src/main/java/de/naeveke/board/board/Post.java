@@ -1,13 +1,16 @@
 package de.naeveke.board.board;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import java.io.Serializable;
 import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.Transient;
+import javax.validation.constraints.NotNull;
 import org.hibernate.annotations.Type;
-import org.hibernate.validator.constraints.NotEmpty;
 
 @Entity
 public class Post implements Serializable {
@@ -17,13 +20,15 @@ public class Post implements Serializable {
     private long id;
 
     @Embedded
+    @NotNull
     private Position position;
     
-    @NotEmpty
+    @NotNull
     @Type(type="text")
     private String content;
     
     @ManyToOne
+    @JsonBackReference
     private Board board;
 
     public long getId() {
