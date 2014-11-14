@@ -56,7 +56,7 @@
                             restrict: 'C',
                             link: function ($scope, element, attr) {
                                 if (!element.scope().post.position.isUnknown()) {
-                                    element.offset(element.scope().post.position.asOffset());
+                                    $(element).offset(element.scope().post.position.asOffset());
                                 }
 
                                 element.draggable({

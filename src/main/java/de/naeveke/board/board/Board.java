@@ -10,7 +10,6 @@ import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
 import javax.persistence.OneToMany;
 import org.hibernate.annotations.GenericGenerator;
 
@@ -23,8 +22,7 @@ public class Board implements Serializable {
     @Column(columnDefinition = "BINARY(16)")
     private UUID uuid;
 
-    @OneToMany(fetch=FetchType.EAGER, cascade=CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name="board_uuid")
+    @OneToMany(fetch=FetchType.EAGER, cascade=CascadeType.ALL, orphanRemoval = true, mappedBy = "board")
     private List<Post> posts = new ArrayList<Post>();
 
     public UUID getUuid() {

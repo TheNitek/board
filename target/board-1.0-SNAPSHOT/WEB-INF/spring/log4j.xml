@@ -11,7 +11,7 @@
     </appender>
 
     <logger name="org.springframework">
-        <level value="INFO"/>
+        <level value="DEBUG"/>
     </logger>
 
     <logger name="de.naeveke.board">

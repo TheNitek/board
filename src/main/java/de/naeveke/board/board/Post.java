@@ -8,7 +8,6 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
-import javax.persistence.Transient;
 import javax.validation.constraints.NotNull;
 import org.hibernate.annotations.Type;
 
@@ -27,7 +26,8 @@ public class Post implements Serializable {
     @Type(type="text")
     private String content;
     
-    @ManyToOne
+    @ManyToOne(optional = false)
+    @JoinColumn(name="board_uuid", updatable = false, nullable = false)
     @JsonBackReference
     private Board board;
 
