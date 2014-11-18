@@ -91,6 +91,8 @@
                                     greedy: isGreedy,
                                     accept: ".post",
                                     drop: function (event, ui) {
+                                        var post = ui.draggable.scope().post;
+
                                         if ($(this).hasClass('remote')) {
                                             target = $scope.remotePosts;
                                             source = $scope.localPosts;
@@ -99,8 +101,6 @@
                                             source = $scope.remotePosts;
                                         }
 
-                                        var post = ui.draggable.scope().post;
-                                        
                                         var zmax = 0;
                                         $.each(target, function (index, value) {
                                             var cur = value.position.z;
@@ -112,7 +112,9 @@
                                         });
 
                                         if ($.inArray(post, target) > -1) {
-                                            post.$save();
+                                            if ($(this).hasClass('remote')) {
+                                                post.$save({boardId: $scope.board.uuid});
+                                            }
                                             return;
                                         }
 
@@ -127,6 +129,35 @@
                             }
                         };
                     });
+                    module.directive('contenteditable', [function () {
+                            return {
+                                restrict: 'A', // only activate on element attribute
+                                require: '?ngModel', // get a hold of NgModelController
+                                link: function (scope, element, attrs, ngModel) {
+                                    if (!ngModel)
+                                        return; // do nothing if no ng-model
+
+                                    // Specify how UI should be updated
+                                    ngModel.$render = function () {
+                                        element.html(ngModel.$viewValue);
+                                    };
+
+                                    // Listen for change events to enable binding
+                                    element.on('blur keyup change', function () {
+                                        scope.$evalAsync(read);
+                                    });
+
+                                    // Write data to the model
+                                    function read() {
+                                        var html = element.html();
+                                        if (html == '<br>') {
+                                            html = '';
+                                        }
+                                        ngModel.$setViewValue(html);
+                                    }
+                                }
+                            };
+                        }]);
                     module.factory('Position', function () {
 
                         function Position(top, left, zIndex) {
@@ -175,10 +206,10 @@
                                         get: {
                                             method: 'GET',
                                             isArray: false,
-                                            transformResponse: function(data, header) {
+                                            transformResponse: function (data, header) {
                                                 var board = angular.fromJson(data);
                                                 var enhancedPosts = [];
-                                                if(undefined !== board.posts){
+                                                if (undefined !== board.posts) {
                                                     for (var i = 0; i < board.posts.length; i++) {
                                                         enhancedPosts.push(Post.build(board.posts[i]));
                                                     }
@@ -197,10 +228,27 @@
                             var Post = $resource(
                                     'boards/:boardId/posts/:postId',
                                     {
-                                        boardId: '6eb2006c-5d8f-45dd-ba8c-778523305497',
+                                        boardId: '@boardId',
                                         postId: '@id'
                                     },
                             {
+                                get: {
+                                    method: 'GET',
+                                    isArray: false,
+                                    transformResponse: function (data, header) {
+                                        var post = angular.fromJson(data);
+                                        post.position = Position.build(post.position);
+                                        return post;
+                                    }
+                                },
+                                save: {
+                                    method: 'POST',
+                                    transformResponse: function (data, header) {
+                                        var post = angular.fromJson(data);
+                                        post.position = Position.build(post.position);
+                                        return post;
+                                    }
+                                }
                             });
 
                             angular.extend(Post.prototype, {
@@ -208,15 +256,11 @@
                                 content: ''
                             });
 
-                            Post.prototype.forground = function(){
-                                
-                            }
-            
-                            Post.build = function(data){
-                                newPost = new Post(data);
+                            Post.build = function (data) {
+                                var newPost = new Post(data);
                                 newPost.position = Position.build(data.position);
                                 return newPost;
-                            }
+                            };
 
                             return Post;
                         }]);
@@ -226,14 +270,14 @@
                         $scope.localPosts = [];
                         // use board instead?
                         $scope.remotePosts = currentBoard.posts;
-                        
+
                         $scope.$watchCollection(
                                 "remotePosts",
                                 function (newValue, oldValue) {
-                                    if(undefined === oldValue){
+                                    if (undefined === oldValue) {
                                         return;
                                     }
-                                    
+
                                     var added = [];
                                     var removed = [];
 
@@ -241,13 +285,14 @@
                                         added = $(newValue).not(oldValue).get();
 
                                         $.each(added, function (index, value) {
-                                            value.$save();
+                                            value.$save({boardId: $scope.board.uuid});
                                         });
                                     } else {
                                         removed = $(oldValue).not(newValue).get();
 
                                         $.each(removed, function (index, value) {
-                                            value.$remove();
+                                            value.$remove({boardId: $scope.board.uuid});
+                                            delete value.id;
                                         });
                                     }
                                 }
@@ -267,6 +312,7 @@
                         $scope.createLocalPost = function () {
                             var post = new Post();
                             post.content = 'tescht';
+                            console.log(post.position);
                             $scope.localPosts.push(post);
                         };
                         $scope.foregroundPost = function (event) {
@@ -278,8 +324,8 @@
                             });
 
                             target.scope().post.position.z = Number(zmax) + 1;
-                            target.scope().post.$save();
-                            console.log(target.scope().post, Number(zmax) + 1);
+                            if (target.scope().post.id !== undefined)
+                                target.scope().post.$save({boardId: $scope.board.uuid});
                         };
                     });
         </script>
