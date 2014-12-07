@@ -16,8 +16,8 @@ public class BoardInitializer implements WebApplicationInitializer {
 
     @Override
     public void onStartup(ServletContext container) {
-        container.setInitParameter("log4jConfigLocation", "/WEB-INF/spring/log4j.xml");
-        container.addListener(new Log4jConfigListener());
+        //container.setInitParameter("log4jConfigLocation", "/WEB-INF/spring/log4j.xml");
+        //container.addListener(new Log4jConfigListener());
         
         XmlWebApplicationContext rootContext
                 = new XmlWebApplicationContext();
