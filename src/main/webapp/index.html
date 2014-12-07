@@ -4,13 +4,15 @@
         <title>Online Board</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="js/ui-1.11.2/jquery-ui.min.css">
+        <link rel="stylesheet" href="jslibs/jquery-ui/1.11.2/jquery-ui.min.css">
         <link rel="stylesheet" href="css/board.css">
-        <script src="js/jquery-2.1.1.min.js"></script>
-        <script src="js/ui-1.11.2/jquery-ui.min.js"></script>
-        <script src="js/angular.min.js"></script>
-        <script src="js/angular-route.min.js"></script>
-        <script src="js/angular-resource.min.js"></script>
+        <script src="jslibs/jquery/2.1.1/jquery.min.js"></script>
+        <script src="jslibs/jquery-ui/1.11.2/jquery-ui.min.js"></script>
+        <script src="jslibs/angularjs/1.3.4-1/angular.min.js"></script>
+        <script src="jslibs/angularjs/1.3.4-1/angular-route.min.js"></script>
+        <script src="jslibs/angularjs/1.3.4-1/angular-resource.min.js"></script>
+        <script src="jslibs/sockjs-client/0.3.4/sockjs.min.js"></script>
+        <script src="jslibs/stomp-websocket/2.3.1/stomp.min.js"></script>
     </head>
     <body>
         <div class="fullHeight" ng-view></div>
@@ -18,8 +20,8 @@
         <script>
                     var module = angular.module("board", ['ngRoute', 'ngResource']);
                     module.config(["$routeProvider",
-                        function ($routeProvider) {
-                            $routeProvider.
+                            function ($routeProvider) {
+                                $routeProvider.
                                     when("/board/:uuid", {
                                         templateUrl: 'tpl/board.html',
                                         controller: 'BoardRouteController',
@@ -36,19 +38,19 @@
                                     otherwise({
                                         redirectTo: '/'
                                     });
-                        }
+                            }
                     ]);
                     module.controller("CreateBoardController", function ($scope, $http, $location) {
 
                         $scope.createBoardForm = {};
                         $scope.createBoardForm.submitTheForm = function (item, event) {
                             $http.post("boards", {})
-                                    .success(function (dataFromServer, status, headers, config) {
-                                        $location.path("/board/" + dataFromServer.uuid);
-                                    })
-                                    .error(function (data, status, headers, config) {
-                                        alert("Submitting form failed!");
-                                    });
+                                .success(function (dataFromServer, status, headers, config) {
+                                    $location.path("/board/" + dataFromServer.uuid);
+                                })
+                                .error(function (data, status, headers, config) {
+                                    alert("Submitting form failed!");
+                                });
                         };
                     });
                     module.directive('post', function ($document, Position) {
@@ -75,7 +77,6 @@
                                         $scope.$apply(function () {
                                             ui.helper.scope().post.position = Position.buildFromOffset(ui.helper.offset());
                                             ui.helper.scope().post.position.z = ui.helper.zIndex();
-
                                         });
                                     }
                                 });
@@ -88,13 +89,12 @@
                             link: function ($scope, element, attr) {
                                 var isGreedy = element.hasClass('local');
                                 element.droppable({
-                                    greedy: isGreedy,
-                                    accept: ".post",
-                                    drop: function (event, ui) {
+                                greedy: isGreedy,
+                                        accept: ".post",
+                                        drop: function (event, ui) {
                                         var post = ui.draggable.scope().post;
-
                                         if ($(this).hasClass('remote')) {
-                                            target = $scope.remotePosts;
+                                           target = $scope.remotePosts;
                                             source = $scope.localPosts;
                                         } else {
                                             target = $scope.localPosts;
@@ -106,12 +106,10 @@
                                             var cur = value.position.z;
                                             zmax = cur > zmax ? value.position.z : zmax;
                                         });
-
                                         $scope.$apply(function () {
                                             post.position.z = Number(zmax) + 1;
                                         });
-
-                                        if ($.inArray(post, target) > -1) {
+                                        if ($.inArray(post, target) > - 1) {
                                             if ($(this).hasClass('remote')) {
                                                 post.$save({boardId: $scope.board.uuid});
                                             }
@@ -119,45 +117,44 @@
                                         }
 
                                         $scope.$apply(function () {
-                                            if ($.inArray(post, source) > -1) {
-                                                source.splice($.inArray(post, source), 1);
+                                            if ($.inArray(post, source) > - 1) {
+                                               source.splice($.inArray(post, source), 1);
                                             }
                                             target.push(post);
                                         });
-                                    }
+                                        }
                                 });
                             }
-                        };
+                    };
                     });
                     module.directive('contenteditable', [function () {
-                            return {
-                                restrict: 'A', // only activate on element attribute
-                                require: '?ngModel', // get a hold of NgModelController
-                                link: function (scope, element, attrs, ngModel) {
-                                    if (!ngModel)
-                                        return; // do nothing if no ng-model
+                        return {
+                            restrict: 'A', // only activate on element attribute
+                            require: '?ngModel', // get a hold of NgModelController
+                            link: function (scope, element, attrs, ngModel) {
+                                if (!ngModel)
+                                    return; // do nothing if no ng-model
 
-                                    // Specify how UI should be updated
-                                    ngModel.$render = function () {
-                                        element.html(ngModel.$viewValue);
-                                    };
-
-                                    // Listen for change events to enable binding
-                                    element.on('blur keyup change', function () {
-                                        scope.$evalAsync(read);
-                                    });
-
-                                    // Write data to the model
-                                    function read() {
-                                        var html = element.html();
-                                        if (html == '<br>') {
-                                            html = '';
-                                        }
-                                        ngModel.$setViewValue(html);
+                                // Specify how UI should be updated
+                                ngModel.$render = function () {
+                                    element.html(ngModel.$viewValue);
+                                };
+                                // Listen for change events to enable binding
+                                element.on('blur keyup change', function () {
+                                    scope.$evalAsync(read);
+                                });
+                                // Write data to the model
+                                function read() {
+                                    var html = element.html();
+                                    if (html == '<br>') {
+                                        html = '';
                                     }
+                                    ngModel.$setViewValue(html);
                                 }
-                            };
-                        }]);
+                            }
+                        };
+                    }]);
+                
                     module.factory('Position', function () {
 
                         function Position(top, left, zIndex) {
@@ -169,68 +166,61 @@
                         Position.prototype.isUnknown = function () {
                             return (this.x === null) || (this.y === null) || (this.z === null);
                         };
-
                         Position.prototype.asOffset = function () {
                             return {
                                 top: this.y,
                                 left: this.x
                             };
                         };
-
-
                         Position.build = function (data) {
                             return new Position(
-                                    data.y,
-                                    data.x,
-                                    data.z
-                                    );
+                                data.y,
+                                data.x,
+                                data.z
+                            );
                         };
-
                         Position.buildFromOffset = function (offset) {
                             return new Position(
-                                    offset.top,
-                                    offset.left,
-                                    0
-                                    );
+                                offset.top,
+                                offset.left,
+                                0
+                                );
                         };
-
                         return Position;
                     });
+                    
                     module.factory('Board', ['$resource', 'Post', function ($resource, Post) {
 
-                            var Board = $resource(
-                                    'boards/:uuid',
-                                    {
-                                    },
-                                    {
-                                        get: {
-                                            method: 'GET',
-                                            isArray: false,
-                                            transformResponse: function (data, header) {
-                                                var board = angular.fromJson(data);
-                                                var enhancedPosts = [];
-                                                if (undefined !== board.posts) {
-                                                    for (var i = 0; i < board.posts.length; i++) {
-                                                        enhancedPosts.push(Post.build(board.posts[i]));
-                                                    }
-                                                }
-                                                board.posts = enhancedPosts;
-                                                return board;
+                        var Board = $resource(
+                            'boards/:uuid',
+                            {},
+                            {
+                                get: {
+                                    method: 'GET',
+                                    isArray: false,
+                                    transformResponse: function (data, header) {
+                                        var board = angular.fromJson(data);
+                                        var enhancedPosts = [];
+                                        if (undefined !== board.posts) {
+                                            for (var i = 0; i < board.posts.length; i++) {
+                                                enhancedPosts.push(Post.build(board.posts[i]));
                                             }
                                         }
-                                    });
-
-                            return Board;
-
-                        }]);
+                                        board.posts = enhancedPosts;
+                                        return board;
+                                    }
+                                }
+                        });
+                        return Board;
+                    }]);
                     module.factory('Post', ['$resource', 'Position', function ($resource, Position) {
 
-                            var Post = $resource(
-                                    'boards/:boardId/posts/:postId',
-                                    {
-                                        boardId: '@boardId',
-                                        postId: '@id'
-                                    },
+                        var Post = $resource(
+                            'boards/:boardId/posts/:postId',
+                            {
+                                boardId: '@boardId',
+                                postId: '@id'
+                            },
                             {
                                 get: {
                                     method: 'GET',
@@ -244,67 +234,140 @@
                                 save: {
                                     method: 'POST',
                                     transformResponse: function (data, header) {
-                                        var post = angular.fromJson(data);
+                                    var post = angular.fromJson(data);
                                         post.position = Position.build(post.position);
                                         return post;
                                     }
                                 }
+                            }
+                        );
+
+                        angular.extend(Post.prototype, {
+                            position: new Position(),
+                            content: ''
+                        });
+                        Post.build = function (data) {
+                            var newPost = new Post(data);
+                            newPost.position = Position.build(data.position);
+                            return newPost;
+                        };
+                        return Post;
+                    }]);
+
+                    module.service("BoardLiveService", function($q, $timeout, Post) {
+
+                        var service = {};
+                        var listener = $q.defer();
+                        var socket = {
+                                client: null,
+                                stomp: null
+                        };
+                        
+                        var boardId;
+
+                        service.RECONNECT_TIMEOUT = 1000;
+                        service.SOCKET_URL = "/board/socket";
+                        service.BASE_TOPIC = "/topic/";
+                        service.CHAT_BROKER = "/app/chat";
+                        
+                        service.receive = function() {
+                            return listener.promise;
+                        };
+
+                        /*service.send = function(message) {
+                            var id = Math.floor(Math.random() * 1000000);
+                            socket.stomp.send(service.CHAT_BROKER, {
+                                    priority: 9
+                                }, JSON.stringify({
+                                    message: message,
+                                    id: id
+                                }));
+                                messageIds.push(id);
+                        };*/
+
+                        var reconnect = function() {
+                            $timeout(function() {
+                                initialize();
+                            }, this.RECONNECT_TIMEOUT);
+                        };
+
+                        var startListener = function() {
+                            socket.stomp.subscribe(service.BASE_TOPIC + boardId, function(data) {
+                                listener.notify(Post.build(JSON.parse(data.body)));
                             });
+                        };
 
-                            angular.extend(Post.prototype, {
-                                position: new Position(),
-                                content: ''
-                            });
+                        var initialize = function() {
+                            socket.client = new SockJS(service.SOCKET_URL);
+                            socket.stomp = Stomp.over(socket.client);
+                            socket.stomp.connect({}, startListener);
+                            socket.stomp.onclose = reconnect;
+                        };
 
-                            Post.build = function (data) {
-                                var newPost = new Post(data);
-                                newPost.position = Position.build(data.position);
-                                return newPost;
-                            };
+                        service.setBoardId = function(uuid){
+                            boardId = uuid;
+                            initialize();
+                        };
+                        
+                        return service;
+                    });
 
-                            return Post;
-                        }]);
-
-                    module.controller("BoardRouteController", function ($scope, Post, currentBoard) {
+                    module.controller("BoardRouteController", function ($scope, Post, BoardLiveService, currentBoard) {
                         $scope.board = currentBoard;
                         $scope.localPosts = [];
                         // use board instead?
                         $scope.remotePosts = currentBoard.posts;
-
                         $scope.$watchCollection(
-                                "remotePosts",
-                                function (newValue, oldValue) {
-                                    if (undefined === oldValue) {
-                                        return;
-                                    }
-
-                                    var added = [];
-                                    var removed = [];
-
-                                    if (newValue.length > oldValue.length) {
-                                        added = $(newValue).not(oldValue).get();
-
-                                        $.each(added, function (index, value) {
-                                            value.$save({boardId: $scope.board.uuid});
-                                        });
-                                    } else {
-                                        removed = $(oldValue).not(newValue).get();
-
-                                        $.each(removed, function (index, value) {
-                                            value.$remove({boardId: $scope.board.uuid});
-                                            delete value.id;
-                                        });
-                                    }
+                            "remotePosts",
+                            function (newValue, oldValue) {
+                                if (undefined === oldValue) {
+                                    return;
                                 }
-                        );
 
+                                var rawAdded = $(newValue).not(oldValue).get();
+                                var rawRemoved = $(oldValue).not(newValue).get();
+                                
+                                var added = $.grep(rawAdded, function(el){
+                                    var exists = false;
+                                    $.each(rawRemoved, function(index, value){
+                                        if(el.id === value.id){
+                                            exists = true;
+                                        }
+                                    });
+                                    return !exists;
+                                });
+
+                                var removed = $.grep(rawRemoved, function(el){
+                                    var exists = false;
+                                    $.each(rawAdded, function(index, value){
+                                        if(el.id === value.id){
+                                            exists = true;
+                                        }
+                                    });
+                                    return !exists;
+                                });
+
+                                if(added.length > 0){
+                                    $.each(added, function (index, value) {
+                                        value.$save({boardId: $scope.board.uuid});
+                                    });
+                                }
+
+                                if(removed.length > 0){
+                                    $.each(removed, function (index, value) {
+                                        value.$remove({boardId: $scope.board.uuid});
+                                        delete value.id;
+                                    });
+                                }
+                            }
+                        );
                         $scope.toggleSidebar = function () {
                             var sidebar = $("#sidebar");
                             if (sidebar.hasClass("collapsed")) {
                                 sidebar.animate({left: '0px'}, {queue: false, duration: 500});
                                 sidebar.removeClass("collapsed");
                             } else {
-                                leftTarget = -sidebar.width() + 20;
+                                leftTarget = - sidebar.width() + 20;
                                 sidebar.animate({left: leftTarget}, {queue: false, duration: 500});
                                 sidebar.addClass("collapsed");
                             }
@@ -312,7 +375,6 @@
                         $scope.createLocalPost = function () {
                             var post = new Post();
                             post.content = 'tescht';
-                            console.log(post.position);
                             $scope.localPosts.push(post);
                         };
                         $scope.foregroundPost = function (event) {
@@ -322,11 +384,20 @@
                                 var cur = $(this).zIndex();
                                 zmax = cur > zmax ? $(this).zIndex() : zmax;
                             });
-
                             target.scope().post.position.z = Number(zmax) + 1;
                             if (target.scope().post.id !== undefined)
                                 target.scope().post.$save({boardId: $scope.board.uuid});
                         };
+                        
+                        BoardLiveService.setBoardId($scope.board.uuid)
+                        BoardLiveService.receive().then(null, null, function(post) {
+                            for(var i = 0, len = $scope.remotePosts.length; i < len; i++) {
+                                if($scope.remotePosts[i].id === post.id){
+                                    $scope.remotePosts[i] = post;
+                                    break;
+                                }
+                            }
+                        });
                     });
         </script>
     </body>

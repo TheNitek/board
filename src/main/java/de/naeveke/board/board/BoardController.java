@@ -1,14 +1,13 @@
 package de.naeveke.board.board;
 
-import de.naeveke.board.common.InvalidInputException;
 import de.naeveke.board.common.ResourceNotFoundException;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.validation.Valid;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +24,11 @@ public class BoardController {
 
     @Inject
     PostService postService;
+    
+    @Inject
+    private SimpMessagingTemplate msgTemplate;
+    
+    private static final String WEBSOCKET_TOPIC = "/topic/";
 
     @RequestMapping(value = "/boards/{id}")
     @ResponseBody
@@ -101,7 +105,8 @@ public class BoardController {
     }
 
     @RequestMapping(value = "/boards/{boardId}/posts/{postId}", method = RequestMethod.POST)
-    public String updatePost(@PathVariable String boardId, @PathVariable long postId, @RequestBody @Valid Post post) {
+    @ResponseBody
+    public Post updatePost(@PathVariable String boardId, @PathVariable long postId, @RequestBody @Valid Post post) {
 
         Board board = boardService.get(UUID.fromString(boardId));
 
@@ -109,17 +114,28 @@ public class BoardController {
             throw new ResourceNotFoundException();
         }
 
+        Post updatedPost = null;
+        
         // TODO solve in a better way
         for (Post existingPost : board.getPosts()) {
             if (existingPost.getId() == postId) {
                 existingPost.setContent(post.getContent());
                 existingPost.setPosition(post.getPosition());
+                updatedPost = existingPost;
+                break;
             }
+        }
+        
+        if(null == updatedPost){
+            throw new ResourceNotFoundException();
         }
 
         boardService.save(board);
+        
+        logger.debug("Sending Websocket msg");
+        msgTemplate.convertAndSend(WEBSOCKET_TOPIC + boardId, updatedPost);
 
-        return "redirect:/boards/" + boardId + "/posts/" + post.getId();
+        return updatedPost;
     }
     
 }
