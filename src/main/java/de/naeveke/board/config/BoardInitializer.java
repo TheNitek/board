@@ -27,6 +27,7 @@ public class BoardInitializer implements WebApplicationInitializer {
 
         ServletRegistration.Dynamic dispatcher
                 = container.addServlet("dispatcher", new DispatcherServlet(appContext));
+        dispatcher.setAsyncSupported(true);
         dispatcher.setLoadOnStartup(1);
         dispatcher.addMapping("/");
     }
