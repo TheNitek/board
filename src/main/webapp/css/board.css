@@ -8,6 +8,7 @@ html, body, .fullHeight {
     min-height: 100%;
     height:auto;
     background-color: #679B99;
+    border: black;
     text-align: center;
     position: absolute;
     top: 0;
@@ -18,6 +19,7 @@ html, body, .fullHeight {
     background: #A5C9C8;
     border: 1px solid;
     position: absolute;
+    padding: 5px;
 }
 
 .content {

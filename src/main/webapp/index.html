@@ -60,26 +60,28 @@
                                 if (!element.scope().post.position.isUnknown()) {
                                     $(element).offset(element.scope().post.position.asOffset());
                                 }
+                                
+                                var handler = function (event, ui) {
+                                    // Expand board when post is dragged out of its current bounds
+                                    var topDiff = ui.helper.offset().top + ui.helper.height() - $("#board").height();
+                                    if (topDiff > 0) {
+                                        $("#board").height($("#board").height() + topDiff + 10);
+                                    }
+                                    var leftDiff = ui.helper.offset().left + ui.helper.width() - $("#board").width();
+                                    if (leftDiff > 0) {
+                                        $("#board").width($("#board").width() + leftDiff + 10);
+                                    }
+
+                                    $scope.$apply(function () {
+                                        ui.helper.scope().post.position = Position.buildFromOffset(ui.helper.offset());
+                                        ui.helper.scope().post.position.z = ui.helper.zIndex();
+                                    });
+                                };
 
                                 element.draggable({
                                     stack: '.post',
                                     handle: '.drag_handle',
-                                    drag: function (event, ui) {
-                                        // Expand board when post is dragged out of its current bounds
-                                        var topDiff = ui.helper.offset().top + ui.helper.height() - $("#board").height();
-                                        if (topDiff > 0) {
-                                            $("#board").height($("#board").height() + topDiff + 10);
-                                        }
-                                        var leftDiff = ui.helper.offset().left + ui.helper.width() - $("#board").width();
-                                        if (leftDiff > 0) {
-                                            $("#board").width($("#board").width() + leftDiff + 10);
-                                        }
-
-                                        $scope.$apply(function () {
-                                            ui.helper.scope().post.position = Position.buildFromOffset(ui.helper.offset());
-                                            ui.helper.scope().post.position.z = ui.helper.zIndex();
-                                        });
-                                    }
+                                    stop: handler
                                 });
                             }
                         };
