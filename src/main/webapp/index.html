@@ -63,6 +63,7 @@
 
                                 element.draggable({
                                     stack: '.post',
+                                    handle: '.drag_handle',
                                     drag: function (event, ui) {
                                         // Expand board when post is dragged out of its current bounds
                                         var topDiff = ui.helper.offset().top + ui.helper.height() - $("#board").height();
@@ -83,18 +84,44 @@
                             }
                         };
                     });
+                    module.directive("contenteditable", function() {
+                        return {
+                          restrict: "A",
+                          require: "ngModel",
+                          link: function(scope, element, attrs, ngModel) {
+
+                            function read() {
+                              ngModel.$setViewValue(element.html());
+                            }
+
+                            ngModel.$render = function() {
+                              element.html(ngModel.$viewValue || "");
+                            };
+
+                            element.bind("blur keyup change", function() {
+                                scope.$apply(read);
+                            });
+                            
+                            element.bind("blur", function() {
+                                if (element.parent().parent().hasClass('remote')) {
+                                    element.scope().post.$save({boardId: scope.board.uuid});
+                                }
+                            });
+                          }
+                        };
+                    });
                     module.directive('postTarget', function ($document) {
                         return {
                             restrict: 'C',
                             link: function ($scope, element, attr) {
                                 var isGreedy = element.hasClass('local');
                                 element.droppable({
-                                greedy: isGreedy,
-                                        accept: ".post",
-                                        drop: function (event, ui) {
+                                    greedy: isGreedy,
+                                    accept: ".post",
+                                    drop: function (event, ui) {
                                         var post = ui.draggable.scope().post;
                                         if ($(this).hasClass('remote')) {
-                                           target = $scope.remotePosts;
+                                            target = $scope.remotePosts;
                                             source = $scope.localPosts;
                                         } else {
                                             target = $scope.localPosts;
@@ -122,7 +149,7 @@
                                             }
                                             target.push(post);
                                         });
-                                        }
+                                    }
                                 });
                             }
                     };
@@ -274,26 +301,19 @@
                             return listener.promise;
                         };
 
-                        /*service.send = function(message) {
-                            var id = Math.floor(Math.random() * 1000000);
-                            socket.stomp.send(service.CHAT_BROKER, {
-                                    priority: 9
-                                }, JSON.stringify({
-                                    message: message,
-                                    id: id
-                                }));
-                                messageIds.push(id);
-                        };*/
-
                         var reconnect = function() {
                             $timeout(function() {
+                                console.log("trying to reconnect");
                                 initialize();
                             }, this.RECONNECT_TIMEOUT);
                         };
 
                         var startListener = function() {
                             socket.stomp.subscribe(service.BASE_TOPIC + boardId, function(data) {
-                                listener.notify(Post.build(JSON.parse(data.body)));
+                                var envelope = JSON.parse(data.body);
+                                console.log(envelope);
+                                envelope.payload = Post.build(envelope.payload);
+                                listener.notify(envelope);
                             });
                         };
 
@@ -390,11 +410,24 @@
                         };
                         
                         BoardLiveService.setBoardId($scope.board.uuid)
-                        BoardLiveService.receive().then(null, null, function(post) {
-                            for(var i = 0, len = $scope.remotePosts.length; i < len; i++) {
-                                if($scope.remotePosts[i].id === post.id){
-                                    $scope.remotePosts[i] = post;
-                                    break;
+                        BoardLiveService.receive().then(null, null, function(envelope) {
+                            if(envelope.action == 'UPDATE'){
+                                var post = envelope.payload;
+                                for(var i = 0, len = $scope.remotePosts.length; i < len; i++) {
+                                    if($scope.remotePosts[i].id === post.id){
+                                        $scope.remotePosts[i] = post;
+                                        break;
+                                    }
+                                }
+                            }else if(envelope.action == 'CREATE'){
+                                $scope.remotePosts.push(envelope.payload);
+                            }else if(envelope.action == 'DELETE'){
+                                var post = envelope.payload;
+                                for(var i = 0, len = $scope.remotePosts.length; i < len; i++) {
+                                    if($scope.remotePosts[i].id === post.id){
+                                        $scope.remotePosts.splice(i, 1);
+                                        break;
+                                    }
                                 }
                             }
                         });

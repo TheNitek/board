@@ -17,7 +17,8 @@ html, body, .fullHeight {
 
 .post {
     width: 100px;
-    height: 100px;
+    min-height: 100px;
+    height: auto;
     background: yellow;
     border: 1px solid;
     position: absolute;
