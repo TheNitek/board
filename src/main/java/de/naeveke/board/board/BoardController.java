@@ -57,7 +57,7 @@ public class BoardController {
         boardService.save(board);
         
         // TODO move into service
-        logger.debug("Sending Websocket update msg");
+        logger.debug("Sending Websocket create msg");
         msgTemplate.convertAndSend(WEBSOCKET_TOPIC + boardId, new StompEnvelope<Post>(post, StompEnvelope.Action.CREATE));
 
         return "redirect:/boards/" + boardId + "/posts/" + post.getId();
@@ -108,7 +108,7 @@ public class BoardController {
         
         
         // TODO move into service
-        logger.debug("Sending Websocket update msg");
+        logger.debug("Sending Websocket delete msg");
         msgTemplate.convertAndSend(WEBSOCKET_TOPIC + boardId, new StompEnvelope<Post>(deletePost, StompEnvelope.Action.DELETE));
     }
 
