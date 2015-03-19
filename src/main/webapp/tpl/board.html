@@ -4,7 +4,7 @@
     <div class="collapsed" id="sidebar">
         <div id="sidebarContent" class="postTarget local">
             <button class="btn" ng-click="createLocalPost()">+</button>
-            <div class="post" ng-repeat="post in localPosts" ng-click="foregroundPost($event)" ng-style="{'z-index': post.position.z}" contenteditable ng-model="post.content"></div>
+            <div class="post" ng-repeat="post in localPosts" ng-click="foregroundPost($event)" ng-style="{'z-index': post.position.z}"><div class="drag_handle">O</div><div contenteditable ng-model="post.content"></div></div>
         </div>
         <div id="sidebarToggle" ng-click="toggleSidebar()"></div>
     </div>
