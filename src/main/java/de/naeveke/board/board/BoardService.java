@@ -47,12 +47,9 @@ public class BoardService {
         board.addPost(post);
 
         postRepo.saveAndFlush(post);
-
-        logger.debug("Sending Websocket create msg for " + post.getId());
-        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, StompEnvelope.Action.CREATE));
     }
 
-    public void removePost(String boardId, long postId) {
+    public Post removePost(String boardId, long postId) {
 
         Board board = this.getBoard(boardId);
 
@@ -74,9 +71,8 @@ public class BoardService {
         post.setBoard(null);
 
         postRepo.delete(post);
-
-        logger.debug("Sending Websocket remove msg for " + postId);
-        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, StompEnvelope.Action.DELETE));
+        
+        return post;
     }
 
     public void updatePost(String boardId, Post post) {

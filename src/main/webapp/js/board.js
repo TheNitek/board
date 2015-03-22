@@ -1,4 +1,4 @@
-var module = angular.module("board", ['ngRoute', 'ngResource', 'spring-security-csrf-token-interceptor']);
+var module = angular.module("board", ['ngRoute', 'ngResource']);
 module.config(['$routeProvider', '$httpProvider', '$provide',
     function ($routeProvider, $httpProvider, $provide) {
         $routeProvider.
@@ -85,7 +85,7 @@ module.directive('post', ['Position', 'BoardLiveService', function (Position, Bo
                     drag: positionHandler,
                     stop: positionHandler
                 });
-                //element.on("drag", sendUpdateHandler);
+                element.on("drag", sendUpdateHandler);
             }
         };
     }]);
@@ -306,13 +306,13 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
                 var envelope = JSON.parse(data.body);
                 envelope.payload = Post.build(envelope.payload);
                 listener.notify(envelope);
-            });
+            }, {'x-client-identifier': CLIENT_IDENTIFIER});
         };
 
         var initialize = function () {
             socket.client = new SockJS(service.SOCKET_URL);
             socket.stomp = Stomp.over(socket.client);
-            socket.stomp.connect({'sender': CLIENT_IDENTIFIER}, startListener);
+            socket.stomp.connect({'x-client-identifier': CLIENT_IDENTIFIER}, startListener);
             socket.client.onclose = reconnect;
         };
 
@@ -322,7 +322,7 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
         };
 
         service.sendTransientUpdate = function (post) {
-            socket.stomp.send(service.PREFIX + 'boards/' + boardId, {'sender': CLIENT_IDENTIFIER}, JSON.stringify(post));
+            socket.stomp.send(service.PREFIX + 'boards/' + boardId, {'x-client-identifier': CLIENT_IDENTIFIER}, JSON.stringify(post));
         };
 
         return service;

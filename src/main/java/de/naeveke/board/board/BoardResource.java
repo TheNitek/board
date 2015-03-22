@@ -2,7 +2,6 @@ package de.naeveke.board.board;
 
 import de.naeveke.board.common.InvalidInputException;
 import de.naeveke.board.config.WebSocketConfig;
-import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
 import javax.inject.Inject;
@@ -12,8 +11,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -63,7 +62,12 @@ public class BoardResource {
     @RequestMapping(value = "/boards/{boardId}/posts", method = RequestMethod.POST)
     @ResponseBody
     @ResponseStatus(HttpStatus.CREATED)
-    public Post createPost(@PathVariable String boardId, @RequestBody @Valid Post post, HttpServletResponse response, UriComponentsBuilder uriBuilder) {
+    public Post createPost(
+            @PathVariable String boardId,
+            @RequestHeader("X-Client-Identifier") String clientIdentifier,
+            @RequestBody @Valid Post post,
+            HttpServletResponse response,
+            UriComponentsBuilder uriBuilder) {
 
         if (null != post.getId()) {
             throw new InvalidInputException();
@@ -74,19 +78,33 @@ public class BoardResource {
         UriComponents uriComponents = uriBuilder.path("/boards/{boardId}/posts/{postId}").buildAndExpand(boardId, post.getId());
         response.setHeader("Location", uriComponents.toUriString());
 
+        logger.debug("Sending Websocket create msg for " + post.getId());
+        sendNotification(boardId, post, StompEnvelope.Action.CREATE, clientIdentifier);
+
         return post;
     }
 
     @RequestMapping(value = "/boards/{boardId}/posts/{postId}", method = RequestMethod.DELETE)
     @ResponseBody
-    public void deletePost(@PathVariable String boardId, @PathVariable long postId) {
-
-        boardService.removePost(boardId, postId);
+    public void deletePost(
+            @PathVariable String boardId,
+            @PathVariable long postId,
+            @RequestHeader("X-Client-Identifier") String clientIdentifier) {
+        
+        Post post = boardService.removePost(boardId, postId);
+        
+        logger.debug("Sending Websocket remove msg for " + postId);
+        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, StompEnvelope.Action.DELETE));
     }
 
     @RequestMapping(value = "/boards/{boardId}/posts/{postId}", method = RequestMethod.POST)
     @ResponseBody
-    public Post updatePost(@PathVariable String boardId, @PathVariable long postId, @RequestHeader(value="X-Client-Identifier") String clientIdentifier, @RequestBody @Valid Post post) {
+    public Post updatePost(
+            @PathVariable String boardId,
+            @PathVariable long postId,
+            @RequestHeader("X-Client-Identifier") String clientIdentifier,
+            @RequestBody @Valid Post post) {
+
         if (postId != post.getId()) {
             throw new InvalidInputException();
         }
@@ -94,19 +112,23 @@ public class BoardResource {
         boardService.updatePost(boardId, post);
 
         logger.debug("Sending Websocket update msg for " + post.getId());
-        Map<String, Object> headers = new HashMap<>();
-        if(null != clientIdentifier){
-            headers.put("sender", clientIdentifier);
-        }
-        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, StompEnvelope.Action.UPDATE), headers);
+        sendNotification(boardId, post, StompEnvelope.Action.UPDATE, clientIdentifier);
 
         return post;
     }
 
     @MessageMapping("/boards/{boardId}")
-    public StompEnvelope<Post> updateTransient(@DestinationVariable String boardId, @Valid Post post, Principal principal) {
-        logger.trace("Sending transient update for " + post.getId() + " triggered by " + principal);
-        return new StompEnvelope<>(post, StompEnvelope.Action.UPDATE);
+    public void updateTransient(@DestinationVariable String boardId, @Header("x-client-identifier") String clientIdentifer, @Valid Post post) {
+        logger.trace("Sending transient update for " + post.getId() + " triggered by " + clientIdentifer);
+        sendNotification(boardId, post, StompEnvelope.Action.UPDATE, clientIdentifer);
+    }
+
+    protected void sendNotification(String boardId, Post post, StompEnvelope.Action action, String clientIdentifier) {
+        Map<String, Object> headers = new HashMap<>();
+        if (null != clientIdentifier) {
+            headers.put("sender", clientIdentifier);
+        }
+        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, StompEnvelope.Action.UPDATE), headers);
     }
 
 }
