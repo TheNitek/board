@@ -3,6 +3,8 @@ package de.naeveke.board.board;
 import de.naeveke.board.common.InvalidInputException;
 import de.naeveke.board.common.ResourceNotFoundException;
 import de.naeveke.board.config.WebSocketConfig;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
@@ -47,7 +49,7 @@ public class BoardService {
         postRepo.saveAndFlush(post);
 
         logger.debug("Sending Websocket create msg for " + post.getId());
-        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<Post>(post, StompEnvelope.Action.CREATE));
+        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, StompEnvelope.Action.CREATE));
     }
 
     public void removePost(String boardId, long postId) {
@@ -74,7 +76,7 @@ public class BoardService {
         postRepo.delete(post);
 
         logger.debug("Sending Websocket remove msg for " + postId);
-        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<Post>(post, StompEnvelope.Action.DELETE));
+        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, StompEnvelope.Action.DELETE));
     }
 
     public void updatePost(String boardId, Post post) {
@@ -94,8 +96,6 @@ public class BoardService {
 
         postRepo.save(post);
 
-        logger.debug("Sending Websocket update msg for " + post.getId());
-        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<Post>(post, StompEnvelope.Action.UPDATE));
     }
 
 }
