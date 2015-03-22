@@ -20,8 +20,8 @@ module.config(["$routeProvider",
                 });
     }
 ]);
-module.controller("CreateBoardController", function ($scope, $http, $location) {
 
+module.controller("CreateBoardController", ['$scope', '$http', '$location', function ($scope, $http, $location) {
     $scope.createBoardForm = {};
     $scope.createBoardForm.submitTheForm = function (item, event) {
         $http.post("boards", {})
@@ -29,11 +29,12 @@ module.controller("CreateBoardController", function ($scope, $http, $location) {
                     $location.path("/board/" + dataFromServer.uuid);
                 })
                 .error(function (data, status, headers, config) {
-                    alert("Submitting form failed!");
+                    alert("Submitting form failed! Please try again later");
                 });
     };
-});
-module.directive('post', function ($document, Position, BoardLiveService) {
+}]);
+
+module.directive('post', ['Position', 'BoardLiveService', function (Position, BoardLiveService) {
     return {
         restrict: 'C',
         link: function ($scope, element, attr) {
@@ -72,8 +73,9 @@ module.directive('post', function ($document, Position, BoardLiveService) {
             //element.on("drag", sendUpdateHandler);
         }
     };
-});
-module.directive("contenteditable", function () {
+}]);
+
+module.directive('contenteditable', function () {
     return {
         restrict: "A",
         require: "ngModel",
@@ -99,7 +101,8 @@ module.directive("contenteditable", function () {
         }
     };
 });
-module.directive('postTarget', function ($document) {
+
+module.directive('postTarget', function () {
     return {
         restrict: 'C',
         link: function ($scope, element, attr) {
@@ -187,7 +190,6 @@ module.factory('Position', function () {
 });
 
 module.factory('Board', ['$resource', 'Post', function ($resource, Post) {
-
         var Board = $resource(
                 'boards/:uuid',
                 {},
@@ -210,6 +212,7 @@ module.factory('Board', ['$resource', 'Post', function ($resource, Post) {
                 });
         return Board;
     }]);
+
 module.factory('Post', ['$resource', 'Position', function ($resource, Position) {
 
         var Post = $resource(
@@ -251,7 +254,7 @@ module.factory('Post', ['$resource', 'Position', function ($resource, Position) 
         return Post;
     }]);
 
-module.service("BoardLiveService", function ($q, $timeout, Post) {
+module.service("BoardLiveService", ['$q', '$timeout', 'Post', function ($q, $timeout, Post) {
 
     var service = {};
     var listener = $q.defer();
@@ -303,9 +306,9 @@ module.service("BoardLiveService", function ($q, $timeout, Post) {
     };
 
     return service;
-});
+}]);
 
-module.controller("BoardRouteController", function ($scope, Post, BoardLiveService, currentBoard) {
+module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService', 'currentBoard', function ($scope, Post, BoardLiveService, currentBoard) {
     $scope.board = currentBoard;
     $scope.localPosts = [];
     // use board instead?
@@ -331,7 +334,6 @@ module.controller("BoardRouteController", function ($scope, Post, BoardLiveServi
         if (!target.hasClass('post')) {
             target = target.parents('.post').first();
         }
-        console.log(target);
         var zmax = 0;
         target.siblings('.post').each(function () {
             var cur = $(this).zIndex();
@@ -344,25 +346,27 @@ module.controller("BoardRouteController", function ($scope, Post, BoardLiveServi
 
     BoardLiveService.setBoardId($scope.board.uuid);
     BoardLiveService.receive().then(null, null, function (envelope) {
-        var post = envelope.payload;
-        for (var i = 0, len = $scope.remotePosts.length; i < len; i++) {
-            if ($scope.remotePosts[i].id === post.id) {
-                // On update refresh copy data to local copy
-                if (envelope.action === 'UPDATE') {
-                    $scope.remotePosts[i] = post;
-                    // On delete get rid of the local copy
-                } else if (envelope.action === 'DELETE') {
-                    $scope.remotePosts.splice(i, 1);
+        if (envelope.type === 'Post') {
+            var post = envelope.payload;
+            for (var i = 0, len = $scope.remotePosts.length; i < len; i++) {
+                if ($scope.remotePosts[i].id === post.id) {
+                    // On update refresh copy data to local copy
+                    if (envelope.action === 'UPDATE') {
+                        $scope.remotePosts[i] = post;
+                        // On delete get rid of the local copy
+                    } else if (envelope.action === 'DELETE') {
+                        $scope.remotePosts.splice(i, 1);
+                    }
+                    // We want to quite here in all cases where post already exists
+                    // In case of CREATE this means we prevent duplicates
+                    return;
                 }
-                // We want to quite here in all cases where post already exists
-                // In case of CREATE this means we prevent duplicates
-                return;
+            }
+            if (envelope.action === 'CREATE') {
+                $scope.remotePosts.push(envelope.payload);
             }
         }
-        if (envelope.action === 'CREATE') {
-            $scope.remotePosts.push(envelope.payload);
-        }
     });
-});
+}]);
 
 
