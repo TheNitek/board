@@ -90,14 +90,16 @@ module.directive('post', ['Position', 'BoardLiveService', function (Position, Bo
         };
     }]);
 
-module.directive('contenteditable', function () {
+module.directive('contenteditable', ['BoardLiveService', function (BoardLiveService) {
     return {
         restrict: "A",
         require: "ngModel",
         link: function (scope, element, attrs, ngModel) {
-
+            
             function read() {
-                ngModel.$setViewValue(element.text());
+                var value = element.context.innerText || element.context.textContent;
+                console.log(value);
+                ngModel.$setViewValue(value);
             }
 
             ngModel.$render = function () {
@@ -106,16 +108,19 @@ module.directive('contenteditable', function () {
 
             element.bind("blur keyup change", function () {
                 scope.$apply(read);
+                if (element.scope().post.id !== undefined){
+                    BoardLiveService.sendTransientUpdate(element.scope().post);
+                }
             });
 
             element.bind("blur", function () {
-                if (element.parent().parent().hasClass('remote')) {
+                if (element.scope().post.id !== undefined) {
                     element.scope().post.$save({boardId: scope.board.uuid});
                 }
             });
         }
     };
-});
+}]);
 
 module.directive('postTarget', function () {
     return {
@@ -300,7 +305,6 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
             socket.stomp.subscribe(service.BASE_TOPIC + 'boards/' + boardId, function (data) {
                 if(data.headers.sender && (data.headers.sender === CLIENT_IDENTIFIER)){
                     // Ignore events we sent
-                    console.log("Ignoring message triggert by this client");
                     return;
                 }
                 var envelope = JSON.parse(data.body);

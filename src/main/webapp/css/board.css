@@ -32,6 +32,7 @@ html, body, .fullHeight {
     overflow-x: hidden;
     white-space: pre-wrap;
     padding: 5px;
+    word-wrap: break-word;
 }
 
 .drag_handle {
