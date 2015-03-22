@@ -31,8 +31,12 @@ public class BoardInitializer implements WebApplicationInitializer {
 
         servletContext.addListener(new ContextLoaderListener(rootContext));
 
+        AnnotationConfigWebApplicationContext appContext
+                = new AnnotationConfigWebApplicationContext();
+        appContext.register(DispatcherConfig.class);
+
         ServletRegistration.Dynamic dispatcher
-                = servletContext.addServlet("dispatcher", new DispatcherServlet(rootContext));
+                = servletContext.addServlet("dispatcher", new DispatcherServlet(appContext));
         dispatcher.setAsyncSupported(true);
         dispatcher.setLoadOnStartup(1);
         dispatcher.addMapping("/");

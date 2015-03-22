@@ -71,8 +71,13 @@ module.directive('post', ['Position', 'BoardLiveService', function (Position, Bo
 
                     $scope.$apply(function () {
                         ui.helper.scope().post.position = Position.buildFromOffset(ui.helper.offset());
-                        ui.helper.scope().post.position.z = ui.helper.zIndex();
+                        //if(event.type !== 'drag'){
+                            ui.helper.scope().post.position.z = ui.helper.zIndex();
                     });
+                };
+                
+                var foregroundHandler = function(event, ui){
+                    $scope.foregroundPost(ui.helper.scope().post);
                 };
 
                 var sendUpdateHandler = function (event, ui) {
@@ -80,12 +85,11 @@ module.directive('post', ['Position', 'BoardLiveService', function (Position, Bo
                 };
 
                 element.draggable({
-                    stack: '.post',
                     handle: '.drag_handle',
                     drag: positionHandler,
                     stop: positionHandler
                 });
-                element.on("drag", sendUpdateHandler);
+                element.on('drag', sendUpdateHandler);
             }
         };
     }]);
@@ -337,12 +341,30 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
         $scope.localPosts = [];
         // use board instead?
         $scope.remotePosts = currentBoard.posts;
+        
+        var findForeground = function(posts, ignorePost){
+            var zmax = 0;
+            $.each(posts, function (index, value) {
+                if(ignorePost && (ignorePost === value)){
+                    return;
+                }
+                zmax = value.position.z > zmax ? value.position.z : zmax;
+            });
+            var sidebar = $("#sidebar");
+            if(!sidebar.hasClass("collapsed")) {
+                zmax = sidebar.zIndex() > zmax ? sidebar.zIndex() : zmax;
+            }
+            
+            return Number(zmax) + 1;
+        };
+        
         $scope.toggleSidebar = function () {
             var sidebar = $("#sidebar");
-            if (sidebar.hasClass("collapsed")) {
+            if(sidebar.hasClass("collapsed")) {
+                sidebar.zIndex(findForeground($scope.remotePosts));
                 sidebar.animate({left: '0px'}, {queue: false, duration: 500});
                 sidebar.removeClass("collapsed");
-            } else {
+            }else{
                 leftTarget = -sidebar.width() + 20;
                 sidebar.animate({left: leftTarget}, {queue: false, duration: 500});
                 sidebar.addClass("collapsed");
@@ -350,22 +372,19 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
         };
         $scope.createLocalPost = function () {
             var post = new Post();
-            post.content = 'tescht';
+            post.content = '';
             $scope.localPosts.push(post);
         };
-        $scope.foregroundPost = function (event, post) {
-            var target = $(event.target);
-            if (!target.hasClass('post')) {
-                target = target.parents('.post').first();
+        $scope.foregroundPost = function (post) {
+            var siblings = $scope.remotePosts;
+            if (post.id === undefined){
+                siblings = $scope.localPosts;
             }
-            var zmax = 0;
-            target.siblings('.post').each(function () {
-                var cur = $(this).zIndex();
-                zmax = cur > zmax ? $(this).zIndex() : zmax;
-            });
-            post.position.z = Number(zmax) + 1;
-            /*if (target.scope().post.id !== undefined)
-             target.scope().post.$save({boardId: $scope.board.uuid});*/
+            
+            post.position.z = findForeground(siblings, post);
+            if (post.id !== undefined){
+                post.$save({boardId: $scope.board.uuid});
+            }
         };
 
         BoardLiveService.setBoardId($scope.board.uuid);

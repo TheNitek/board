@@ -2,31 +2,20 @@ package de.naeveke.board.board;
 
 import de.naeveke.board.common.InvalidInputException;
 import de.naeveke.board.common.ResourceNotFoundException;
-import de.naeveke.board.config.WebSocketConfig;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 @Transactional
 public class BoardService {
 
-    private final Log logger = LogFactory.getLog(getClass());
-
     @Inject
     private BoardRepository boardRepo;
 
     @Inject
     private PostRepository postRepo;
-
-    @Inject
-    private SimpMessagingTemplate msgTemplate;
 
     public Board getBoard(String id) {
         return boardRepo.findOne(UUID.fromString(id));
@@ -67,8 +56,8 @@ public class BoardService {
             throw new InvalidInputException();
         }
         
-        // Foreign Key must be remove or delete will silently fail
-        post.setBoard(null);
+        // Be done or delete will silently fail
+        board.removePost(post);
 
         postRepo.delete(post);
         

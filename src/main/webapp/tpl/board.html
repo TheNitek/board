@@ -1,10 +1,10 @@
 <div id="board" class="postTarget remote">
-    <div class="post" ng-repeat="post in remotePosts" ng-click="foregroundPost($event, post)" ng-style="{'z-index': post.position.z}"><div class="drag_handle"></div><div class="content" contenteditable ng-model="post.content"></div></div>
+    <div class="post" ng-repeat="post in remotePosts" ng-style="{'z-index': post.position.z}"><div class="drag_handle" ng-mousedown="foregroundPost(post)"></div><div class="content" contenteditable ng-click="foregroundPost(post)" ng-model="post.content"></div></div>
 
     <div class="collapsed" id="sidebar">
         <div id="sidebarContent" class="postTarget local">
             <button class="btn" ng-click="createLocalPost()">+</button>
-            <div class="post" ng-repeat="post in localPosts" ng-click="foregroundPost($event)" ng-style="{'z-index': post.position.z}"><div class="drag_handle"></div><div class="content" contenteditable ng-model="post.content"></div></div>
+            <div class="post" ng-repeat="post in localPosts" ng-style="{'z-index': post.position.z}"><div class="drag_handle" ng-mousedown="foregroundPost(post)"></div><div class="content" contenteditable ng-click="foregroundPost(post)" ng-model="post.content"></div></div>
         </div>
         <div id="sidebarToggle" ng-click="toggleSidebar()"></div>
     </div>

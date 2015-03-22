@@ -78,14 +78,13 @@ public class BoardResource {
         UriComponents uriComponents = uriBuilder.path("/boards/{boardId}/posts/{postId}").buildAndExpand(boardId, post.getId());
         response.setHeader("Location", uriComponents.toUriString());
 
-        logger.debug("Sending Websocket create msg for " + post.getId());
         sendNotification(boardId, post, StompEnvelope.Action.CREATE, clientIdentifier);
 
         return post;
     }
 
     @RequestMapping(value = "/boards/{boardId}/posts/{postId}", method = RequestMethod.DELETE)
-    @ResponseBody
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletePost(
             @PathVariable String boardId,
             @PathVariable long postId,
@@ -93,8 +92,7 @@ public class BoardResource {
         
         Post post = boardService.removePost(boardId, postId);
         
-        logger.debug("Sending Websocket remove msg for " + postId);
-        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, StompEnvelope.Action.DELETE));
+        sendNotification(boardId, post, StompEnvelope.Action.DELETE, clientIdentifier);
     }
 
     @RequestMapping(value = "/boards/{boardId}/posts/{postId}", method = RequestMethod.POST)
@@ -111,7 +109,6 @@ public class BoardResource {
 
         boardService.updatePost(boardId, post);
 
-        logger.debug("Sending Websocket update msg for " + post.getId());
         sendNotification(boardId, post, StompEnvelope.Action.UPDATE, clientIdentifier);
 
         return post;
@@ -124,11 +121,12 @@ public class BoardResource {
     }
 
     protected void sendNotification(String boardId, Post post, StompEnvelope.Action action, String clientIdentifier) {
+        logger.debug("Sending Websocket " + action + " msg for " + post.getId());
         Map<String, Object> headers = new HashMap<>();
         if (null != clientIdentifier) {
             headers.put("sender", clientIdentifier);
         }
-        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, StompEnvelope.Action.UPDATE), headers);
+        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, action), headers);
     }
 
 }
