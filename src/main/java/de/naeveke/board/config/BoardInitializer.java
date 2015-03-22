@@ -2,10 +2,13 @@ package de.naeveke.board.config;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletRegistration;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.springframework.web.WebApplicationInitializer;
 import org.springframework.web.context.ContextLoaderListener;
-import org.springframework.web.context.support.XmlWebApplicationContext;
+import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.DispatcherServlet;
+import org.springframework.web.util.Log4jConfigListener;
 
 /**
  *
@@ -13,22 +16,27 @@ import org.springframework.web.servlet.DispatcherServlet;
  */
 public class BoardInitializer implements WebApplicationInitializer {
 
-    @Override
-    public void onStartup(ServletContext container) {
-        
-        XmlWebApplicationContext rootContext
-                = new XmlWebApplicationContext();
-        rootContext.setConfigLocation("/WEB-INF/spring/board-context.xml");
+    protected final Log logger = LogFactory.getLog(getClass());
 
-        container.addListener(new ContextLoaderListener(rootContext));
-        
-        XmlWebApplicationContext appContext = new XmlWebApplicationContext();
-        appContext.setConfigLocation("/WEB-INF/spring/dispatcher-config.xml");
+    @Override
+    public void onStartup(ServletContext servletContext) {
+        servletContext.setInitParameter("log4jConfigLocation", "classpath:log4j.properties");
+        // Fixes deploy problems (see http://stackoverflow.com/a/5014810/3155154)
+        servletContext.setInitParameter("log4jExposeWebAppRoot", "false");
+        servletContext.addListener(new Log4jConfigListener());
+
+        AnnotationConfigWebApplicationContext rootContext
+                = new AnnotationConfigWebApplicationContext();
+        rootContext.register(BoardConfig.class);
+
+        servletContext.addListener(new ContextLoaderListener(rootContext));
 
         ServletRegistration.Dynamic dispatcher
-                = container.addServlet("dispatcher", new DispatcherServlet(appContext));
+                = servletContext.addServlet("dispatcher", new DispatcherServlet(rootContext));
         dispatcher.setAsyncSupported(true);
         dispatcher.setLoadOnStartup(1);
         dispatcher.addMapping("/");
+
+        logger.info("finished onStartup");
     }
 }

@@ -1,8 +1,9 @@
 package de.naeveke.board.board;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -10,6 +11,7 @@ import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
 import javax.persistence.OneToMany;
 import org.hibernate.annotations.GenericGenerator;
 
@@ -22,8 +24,8 @@ public class Board implements Serializable {
     @Column(columnDefinition = "BINARY(16)")
     private UUID uuid;
 
-    @OneToMany(fetch=FetchType.EAGER, cascade=CascadeType.ALL, orphanRemoval = true, mappedBy = "board")
-    private List<Post> posts = new ArrayList<Post>();
+    @OneToMany(fetch=FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true, mappedBy = "board")
+    private Set<Post> posts = new HashSet<Post>();
 
     public UUID getUuid() {
         return uuid;
@@ -33,11 +35,11 @@ public class Board implements Serializable {
         this.uuid = uuid;
     }
 
-    public List<Post> getPosts() {
+    public Set<Post> getPosts() {
         return posts;
     }
 
-    protected void setPosts(List<Post> posts) {
+    protected void setPosts(Set<Post> posts) {
         this.posts = posts;
     }
     

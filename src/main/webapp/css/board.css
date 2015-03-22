@@ -19,7 +19,6 @@ html, body, .fullHeight {
     background: #A5C9C8;
     border: 1px solid;
     position: absolute;
-    padding: 5px;
 }
 
 .content {
@@ -31,6 +30,14 @@ html, body, .fullHeight {
     max-height: 350px;
     overflow-y: auto;
     overflow-x: hidden;
+    white-space: pre-wrap;
+    padding: 5px;
+}
+
+.drag_handle {
+    background-color: #276C69;
+    cursor: move;
+    height: 20px;
 }
 
 #sidebar {

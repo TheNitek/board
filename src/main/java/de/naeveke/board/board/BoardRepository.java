@@ -1,7 +1,7 @@
 package de.naeveke.board.board;
 
-import de.naeveke.board.database.BaseRepository;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -9,9 +9,5 @@ import org.springframework.stereotype.Repository;
  * @author Nitek
  */
 @Repository
-public class BoardRepository extends BaseRepository<Board, UUID> {
-
-    public BoardRepository() {
-        super(Board.class);
-    }
+public interface BoardRepository extends JpaRepository<Board, UUID> {
 }

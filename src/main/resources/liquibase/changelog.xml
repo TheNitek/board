@@ -38,5 +38,10 @@
             </column>
         </addColumn>
     </changeSet>
-  
+
+      
+    <changeSet id="drop-null-constraint-board_uuid" author="Nitek">
+        <dropNotNullConstraint tableName="Post" columnName="board_uuid" columnDataType="BINARY(16)" />
+    </changeSet>
+      
 </databaseChangeLog>
