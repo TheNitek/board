@@ -26,9 +26,9 @@ module.config(['$routeProvider', '$httpProvider', '$provide',
                 result += chars[Math.round(Math.random() * (chars.length - 1))];
             return result;
         };
-        
+
         var clientIdentifier = randomString(25);
-        
+
         $provide.constant('CLIENT_IDENTIFIER', clientIdentifier);
 
         $httpProvider.defaults.headers.common["X-Requested-With"] = 'XMLHttpRequest';
@@ -52,11 +52,14 @@ module.controller("CreateBoardController", ['$scope', '$http', '$location', func
 module.directive('post', ['Position', 'BoardLiveService', function (Position, BoardLiveService) {
         return {
             restrict: 'C',
-            link: function ($scope, element, attr) {
-                if (!element.scope().post.position.isUnknown()) {
-                    $(element).offset(element.scope().post.position.asOffset());
-                    $(element).zIndex(element.scope().post.position.z);
-                }
+            link: function (scope, element, attr) {
+
+                scope.$watch('post', function (newPost) {
+                    if (!newPost.position.isUnknown()) {
+                        element.offset(newPost.position.asOffset());
+                        element.zIndex(newPost.position.z);
+                    }
+                });
 
                 var positionHandler = function (event, ui) {
                     // Expand board when post is dragged out of its current bounds
@@ -69,19 +72,14 @@ module.directive('post', ['Position', 'BoardLiveService', function (Position, Bo
                         $("#board").width($("#board").width() + leftDiff + 10);
                     }
 
-                    $scope.$apply(function () {
-                        ui.helper.scope().post.position = Position.buildFromOffset(ui.helper.offset());
-                        //if(event.type !== 'drag'){
-                            ui.helper.scope().post.position.z = ui.helper.zIndex();
+                    scope.$apply(function () {
+                        scope.post.position = Position.buildFromOffset(ui.helper.offset());
+                        scope.post.position.z = ui.helper.zIndex();
                     });
-                };
-                
-                var foregroundHandler = function(event, ui){
-                    $scope.foregroundPost(ui.helper.scope().post);
                 };
 
                 var sendUpdateHandler = function (event, ui) {
-                    BoardLiveService.sendTransientUpdate(ui.helper.scope().post);
+                    BoardLiveService.sendTransientUpdate(scope.post);
                 };
 
                 element.draggable({
@@ -95,36 +93,35 @@ module.directive('post', ['Position', 'BoardLiveService', function (Position, Bo
     }]);
 
 module.directive('contenteditable', ['BoardLiveService', function (BoardLiveService) {
-    return {
-        restrict: "A",
-        require: "ngModel",
-        link: function (scope, element, attrs, ngModel) {
-            
-            function read() {
-                var value = element.context.innerText || element.context.textContent;
-                console.log(value);
-                ngModel.$setViewValue(value);
+        return {
+            restrict: "A",
+            require: "ngModel",
+            link: function (scope, element, attrs, ngModel) {
+
+                function read() {
+                    var value = element.context.innerText || element.context.textContent;
+                    ngModel.$setViewValue(value);
+                }
+
+                ngModel.$render = function () {
+                    element.text(ngModel.$viewValue || "");
+                };
+
+                element.bind("blur keyup change", function () {
+                    scope.$apply(read);
+                    if (element.scope().post.id !== undefined) {
+                        BoardLiveService.sendTransientUpdate(element.scope().post);
+                    }
+                });
+
+                element.bind("blur", function () {
+                    if (element.scope().post.id !== undefined) {
+                        element.scope().post.$save({boardId: scope.board.uuid});
+                    }
+                });
             }
-
-            ngModel.$render = function () {
-                element.text(ngModel.$viewValue || "");
-            };
-
-            element.bind("blur keyup change", function () {
-                scope.$apply(read);
-                if (element.scope().post.id !== undefined){
-                    BoardLiveService.sendTransientUpdate(element.scope().post);
-                }
-            });
-
-            element.bind("blur", function () {
-                if (element.scope().post.id !== undefined) {
-                    element.scope().post.$save({boardId: scope.board.uuid});
-                }
-            });
-        }
-    };
-}]);
+        };
+    }]);
 
 module.directive('postTarget', function () {
     return {
@@ -307,7 +304,7 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
 
         var startListener = function () {
             socket.stomp.subscribe(service.BASE_TOPIC + 'boards/' + boardId, function (data) {
-                if(data.headers.sender && (data.headers.sender === CLIENT_IDENTIFIER)){
+                if (data.headers.sender && (data.headers.sender === CLIENT_IDENTIFIER)) {
                     // Ignore events we sent
                     return;
                 }
@@ -341,30 +338,30 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
         $scope.localPosts = [];
         // use board instead?
         $scope.remotePosts = currentBoard.posts;
-        
-        var findForeground = function(posts, ignorePost){
+
+        var findForeground = function (posts, ignorePost) {
             var zmax = 0;
             $.each(posts, function (index, value) {
-                if(ignorePost && (ignorePost === value)){
+                if (ignorePost && (ignorePost === value)) {
                     return;
                 }
                 zmax = value.position.z > zmax ? value.position.z : zmax;
             });
             var sidebar = $("#sidebar");
-            if(!sidebar.hasClass("collapsed")) {
+            if (!sidebar.hasClass("collapsed")) {
                 zmax = sidebar.zIndex() > zmax ? sidebar.zIndex() : zmax;
             }
-            
+
             return Number(zmax) + 1;
         };
-        
+
         $scope.toggleSidebar = function () {
             var sidebar = $("#sidebar");
-            if(sidebar.hasClass("collapsed")) {
+            if (sidebar.hasClass("collapsed")) {
                 sidebar.zIndex(findForeground($scope.remotePosts));
                 sidebar.animate({left: '0px'}, {queue: false, duration: 500});
                 sidebar.removeClass("collapsed");
-            }else{
+            } else {
                 leftTarget = -sidebar.width() + 20;
                 sidebar.animate({left: leftTarget}, {queue: false, duration: 500});
                 sidebar.addClass("collapsed");
@@ -377,12 +374,12 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
         };
         $scope.foregroundPost = function (post) {
             var siblings = $scope.remotePosts;
-            if (post.id === undefined){
+            if (post.id === undefined) {
                 siblings = $scope.localPosts;
             }
-            
+
             post.position.z = findForeground(siblings, post);
-            if (post.id !== undefined){
+            if (post.id !== undefined) {
                 post.$save({boardId: $scope.board.uuid});
             }
         };
@@ -396,6 +393,7 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
                         // On update refresh copy data to local copy
                         if (envelope.action === 'UPDATE') {
                             $scope.remotePosts[i] = post;
+                            //$scope.remotePosts[i].position = post.position;
                             // On delete get rid of the local copy
                         } else if (envelope.action === 'DELETE') {
                             $scope.remotePosts.splice(i, 1);
