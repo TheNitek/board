@@ -53,24 +53,29 @@ module.directive('post', ['Position', 'BoardLiveService', function (Position, Bo
         return {
             restrict: 'C',
             link: function (scope, element, attr) {
+                
+                var expandBoard = function(){
+                    // Expand board when post is dragged out of its current bounds
+                    var topDiff = element.offset().top + element.height() - $("#board").height();
+                    if (topDiff > 0) {
+                        $("#board").height($("#board").height() + topDiff + 10);
+                    }
+                    var leftDiff = element.offset().left + element.width() - $("#board").width();
+                    if (leftDiff > 0) {
+                        $("#board").width($("#board").width() + leftDiff + 10);
+                    }
+                };
 
                 scope.$watch('post', function (newPost) {
                     if (!newPost.position.isUnknown()) {
                         element.offset(newPost.position.asOffset());
                         element.zIndex(newPost.position.z);
+                        expandBoard(newPost.position.asOffset());
                     }
                 });
 
                 var positionHandler = function (event, ui) {
-                    // Expand board when post is dragged out of its current bounds
-                    var topDiff = ui.helper.offset().top + ui.helper.height() - $("#board").height();
-                    if (topDiff > 0) {
-                        $("#board").height($("#board").height() + topDiff + 10);
-                    }
-                    var leftDiff = ui.helper.offset().left + ui.helper.width() - $("#board").width();
-                    if (leftDiff > 0) {
-                        $("#board").width($("#board").width() + leftDiff + 10);
-                    }
+                    expandBoard();
 
                     scope.$apply(function () {
                         scope.post.position = Position.buildFromOffset(ui.helper.offset());
