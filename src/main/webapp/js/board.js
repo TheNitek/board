@@ -75,12 +75,12 @@ module.directive('post', ['$timeout', 'UPDATE_DELAY', 'Position', 'BoardLiveServ
                         // Initial positioning needs to be done without animation
                         if (!element.hasClass("positioned")) {
                             // Local posts have to be repositinoed if sidebar is collapsed
-                            if(newPost.id === undefined){
+                            if (newPost.id === undefined) {
                                 element.offset({
                                     top: newPost.position.y,
                                     left: newPost.position.x + $("#sidebar").offset().left
                                 });
-                            }else{
+                            } else {
                                 element.offset(newPost.position.asOffset());
                             }
                             element.addClass("positioned");
@@ -394,16 +394,16 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
 
 
         var localStoredPosts = localStorageService.get($scope.board.uuid);
-        $.each(localStoredPosts, function (index, value) {
-            localStoredPosts[index] = Post.build(value);
-        });
 
         if (localStoredPosts) {
             $scope.localPosts = localStoredPosts;
+            $.each(localStoredPosts, function (index, value) {
+                localStoredPosts[index] = Post.build(value);
+            });
         } else {
             $scope.localPosts = [];
         }
-        
+
         $scope.$watch('localPosts', function (newValue) {
             localStorageService.set($scope.board.uuid, newValue);
         }, true);
@@ -438,7 +438,7 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
                 sidebar.addClass("collapsed");
             }
         };
-        
+
         $scope.createLocalPost = function () {
             var post = new Post();
             post.content = '';
