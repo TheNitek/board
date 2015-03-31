@@ -1,6 +1,6 @@
-var module = angular.module("board", ['ngRoute', 'ngResource']);
-module.config(['$routeProvider', '$httpProvider', '$provide',
-    function ($routeProvider, $httpProvider, $provide) {
+var module = angular.module("board", ['ngRoute', 'ngResource', 'LocalStorageModule']);
+module.config(['$routeProvider', '$httpProvider', '$provide', 'localStorageServiceProvider',
+    function ($routeProvider, $httpProvider, $provide, localStorageServiceProvider) {
         $routeProvider.
                 when("/board/:uuid", {
                     templateUrl: 'tpl/board.html',
@@ -19,7 +19,7 @@ module.config(['$routeProvider', '$httpProvider', '$provide',
                     redirectTo: '/'
                 });
 
-        randomString = function (length) {
+        var randomString = function (length) {
             var result = '';
             var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
             for (var i = length; i > 0; --i)
@@ -30,9 +30,12 @@ module.config(['$routeProvider', '$httpProvider', '$provide',
         var clientIdentifier = randomString(25);
 
         $provide.constant('CLIENT_IDENTIFIER', clientIdentifier);
+        $provide.constant('UPDATE_DELAY', 200);
 
         $httpProvider.defaults.headers.common["X-Requested-With"] = 'XMLHttpRequest';
         $httpProvider.defaults.headers.common["X-Client-Identifier"] = clientIdentifier;
+
+        localStorageServiceProvider.setPrefix('board');
     }
 ]);
 
@@ -49,28 +52,48 @@ module.controller("CreateBoardController", ['$scope', '$http', '$location', func
         };
     }]);
 
-module.directive('post', ['Position', 'BoardLiveService', function (Position, BoardLiveService) {
+module.directive('post', ['$timeout', 'UPDATE_DELAY', 'Position', 'BoardLiveService', function ($timeout, UPDATE_DELAY, Position, BoardLiveService) {
         return {
             restrict: 'C',
             link: function (scope, element, attr) {
-                
-                var expandBoard = function(){
+
+                var expandBoard = function () {
                     // Expand board when post is dragged out of its current bounds
-                    var topDiff = element.offset().top + element.height() - $("#board").height();
+                    var topDiff = scope.post.position.asOffset().top + element.height() - $("#board").height();
                     if (topDiff > 0) {
-                        $("#board").height($("#board").height() + topDiff + 10);
+                        $("#board").height($("#board").height() + topDiff + 50);
                     }
-                    var leftDiff = element.offset().left + element.width() - $("#board").width();
+                    var leftDiff = scope.post.position.asOffset().left + element.width() - $("#board").width();
                     if (leftDiff > 0) {
-                        $("#board").width($("#board").width() + leftDiff + 10);
+                        $("#board").width($("#board").width() + leftDiff + 50);
                     }
                 };
 
                 scope.$watch('post', function (newPost) {
                     if (!newPost.position.isUnknown()) {
-                        element.offset(newPost.position.asOffset());
                         element.zIndex(newPost.position.z);
-                        expandBoard(newPost.position.asOffset());
+                        // Initial positioning needs to be done without animation
+                        if (!element.hasClass("positioned")) {
+                            // Local posts have to be repositinoed if sidebar is collapsed
+                            if(newPost.id === undefined){
+                                element.offset({
+                                    top: newPost.position.y,
+                                    left: newPost.position.x + $("#sidebar").offset().left
+                                });
+                            }else{
+                                element.offset(newPost.position.asOffset());
+                            }
+                            element.addClass("positioned");
+                        } else {
+                            // Animation has to happen on position, so caculate new position base on the offsets
+                            element.animate({
+                                left: element.position().left + newPost.position.asOffset().left - element.offset().left,
+                                top: element.position().top + newPost.position.asOffset().top - element.offset().top
+                            }, {
+                                duration: UPDATE_DELAY
+                            });
+                        }
+                        expandBoard();
                     }
                 });
 
@@ -83,8 +106,25 @@ module.directive('post', ['Position', 'BoardLiveService', function (Position, Bo
                     });
                 };
 
+                var delayUpdates = false;
+                var pendingUpdate;
                 var sendUpdateHandler = function (event, ui) {
-                    BoardLiveService.sendTransientUpdate(scope.post);
+                    if (scope.post.id === undefined) {
+                        return;
+                    }
+                    $timeout.cancel(pendingUpdate);
+                    if (!delayUpdates) {
+                        BoardLiveService.sendTransientUpdate(scope.post);
+                        $timeout(function () {
+                            delayUpdates = false;
+                        }, UPDATE_DELAY);
+                        delayUpdates = true;
+                    } else {
+                        // Make sure the last position is sent if element still in drag state, but note moved anymore
+                        pendingUpdate = $timeout(function () {
+                            BoardLiveService.sendTransientUpdate(scope.post);
+                        }, UPDATE_DELAY);
+                    }
                 };
 
                 element.draggable({
@@ -103,23 +143,29 @@ module.directive('contenteditable', ['BoardLiveService', function (BoardLiveServ
             require: "ngModel",
             link: function (scope, element, attrs, ngModel) {
 
-                function read() {
+                var read = function () {
                     var value = element.context.innerText || element.context.textContent;
+                    value = value.replace(/\r\n/g, "\n");
                     ngModel.$setViewValue(value);
-                }
+                };
 
                 ngModel.$render = function () {
                     element.text(ngModel.$viewValue || "");
                 };
 
-                element.bind("blur keyup change", function () {
+                element.bind("keyup change", function () {
+                    var beforeValue = ngModel.$viewValue;
                     scope.$apply(read);
-                    if (element.scope().post.id !== undefined) {
+
+                    // Only send update if content changed and post is remote
+                    if ((beforeValue !== ngModel.$viewValue) &&
+                            (element.scope().post.id !== undefined)) {
                         BoardLiveService.sendTransientUpdate(element.scope().post);
                     }
                 });
 
                 element.bind("blur", function () {
+                    scope.$apply(read);
                     if (element.scope().post.id !== undefined) {
                         element.scope().post.$save({boardId: scope.board.uuid});
                     }
@@ -303,6 +349,7 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
         var reconnect = function () {
             $timeout(function () {
                 console.log("trying to reconnect");
+                // TODO reload
                 initialize();
             }, this.RECONNECT_TIMEOUT);
         };
@@ -310,7 +357,7 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
         var startListener = function () {
             socket.stomp.subscribe(service.BASE_TOPIC + 'boards/' + boardId, function (data) {
                 if (data.headers.sender && (data.headers.sender === CLIENT_IDENTIFIER)) {
-                    // Ignore events we sent
+                    // Ignore events we sent ourself
                     return;
                 }
                 var envelope = JSON.parse(data.body);
@@ -322,6 +369,7 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
         var initialize = function () {
             socket.client = new SockJS(service.SOCKET_URL);
             socket.stomp = Stomp.over(socket.client);
+            socket.stomp.debug = false;
             socket.stomp.connect({'x-client-identifier': CLIENT_IDENTIFIER}, startListener);
             socket.client.onclose = reconnect;
         };
@@ -338,11 +386,29 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
         return service;
     }]);
 
-module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService', 'currentBoard', function ($scope, Post, BoardLiveService, currentBoard) {
+module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService', 'currentBoard', 'localStorageService', function ($scope, Post, BoardLiveService, currentBoard, localStorageService) {
         $scope.board = currentBoard;
-        $scope.localPosts = [];
+
         // use board instead?
         $scope.remotePosts = currentBoard.posts;
+
+
+        var localStoredPosts = localStorageService.get($scope.board.uuid);
+        $.each(localStoredPosts, function (index, value) {
+            localStoredPosts[index] = Post.build(value);
+        });
+
+        if (localStoredPosts) {
+            $scope.localPosts = localStoredPosts;
+        } else {
+            $scope.localPosts = [];
+        }
+        
+        $scope.$watch('localPosts', function (newValue) {
+            localStorageService.set($scope.board.uuid, newValue);
+        }, true);
+
+
 
         var findForeground = function (posts, ignorePost) {
             var zmax = 0;
@@ -372,6 +438,7 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
                 sidebar.addClass("collapsed");
             }
         };
+        
         $scope.createLocalPost = function () {
             var post = new Post();
             post.content = '';
@@ -384,6 +451,7 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
             }
 
             post.position.z = findForeground(siblings, post);
+
             if (post.id !== undefined) {
                 post.$save({boardId: $scope.board.uuid});
             }
