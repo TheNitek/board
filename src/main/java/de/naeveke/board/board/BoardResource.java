@@ -10,9 +10,6 @@ import javax.validation.Valid;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.messaging.handler.annotation.DestinationVariable;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -89,9 +86,9 @@ public class BoardResource {
             @PathVariable String boardId,
             @PathVariable long postId,
             @RequestHeader("X-Client-Identifier") String clientIdentifier) {
-        
+
         Post post = boardService.removePost(boardId, postId);
-        
+
         sendNotification(boardId, post, StompEnvelope.Action.DELETE, clientIdentifier);
     }
 
@@ -114,19 +111,13 @@ public class BoardResource {
         return post;
     }
 
-    @MessageMapping("/boards/{boardId}")
-    public void updateTransient(@DestinationVariable String boardId, @Header("x-client-identifier") String clientIdentifer, @Valid Post post) {
-        logger.trace("Sending transient update for " + post.getId() + " triggered by " + clientIdentifer);
-        sendNotification(boardId, post, StompEnvelope.Action.UPDATE, clientIdentifer);
-    }
-
     protected void sendNotification(String boardId, Post post, StompEnvelope.Action action, String clientIdentifier) {
         logger.debug("Sending Websocket " + action + " msg for " + post.getId());
         Map<String, Object> headers = new HashMap<>();
         if (null != clientIdentifier) {
             headers.put("sender", clientIdentifier);
         }
-        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards/" + boardId, new StompEnvelope<>(post, action), headers);
+        msgTemplate.convertAndSend(WebSocketConfig.WEBSOCKET_TOPIC + "/boards." + boardId, new StompEnvelope<>(post, action), headers);
     }
 
 }

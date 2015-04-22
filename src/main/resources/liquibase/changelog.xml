@@ -43,5 +43,36 @@
     <changeSet id="drop-null-constraint-board_uuid" author="Nitek">
         <dropNotNullConstraint tableName="Post" columnName="board_uuid" columnDataType="BINARY(16)" />
     </changeSet>
-      
+
+    <changeSet id="create-user-table" author="Nitek">
+        <createTable tableName="User">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="create-session-table" author="Nitek">
+        <createTable tableName="Session">
+            <column name="id" type="VARCHAR(255)">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="session_user" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+        
+    <changeSet id="add-user-secret" author="Nitek">
+        <addColumn tableName="User">
+            <column name="secret" type="VARCHAR(25)" afterColumn="name">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+    </changeSet>
+
+                  
 </databaseChangeLog>

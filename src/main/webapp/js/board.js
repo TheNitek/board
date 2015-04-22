@@ -1,5 +1,5 @@
 var module = angular.module("board", ['ngRoute', 'ngResource', 'LocalStorageModule']);
-module.config(['$routeProvider', '$httpProvider', '$provide', 'localStorageServiceProvider',
+module.config(['$routeProvider', '$httpProvider', '$provide', 'localStorageServiceProvider', 
     function ($routeProvider, $httpProvider, $provide, localStorageServiceProvider) {
         $routeProvider.
                 when("/board/:uuid", {
@@ -19,7 +19,23 @@ module.config(['$routeProvider', '$httpProvider', '$provide', 'localStorageServi
                     redirectTo: '/'
                 });
 
-        var randomString = function (length) {
+        localStorageServiceProvider.setPrefix('board');
+
+        $provide.constant('UPDATE_DELAY', 200);
+    }
+]);
+
+module.run(['$http', 'tokenService',
+    function($http, tokenService){
+        $http.defaults.headers.common["X-Client-Identifier"] = tokenService.getClientIdentifier();
+}]);
+
+module.factory('tokenService', ['localStorageService', 
+    function(localStorageService){
+        
+        var TokenService = {};
+        
+        TokenService.randomString = function (length) {
             var result = '';
             var chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
             for (var i = length; i > 0; --i)
@@ -27,17 +43,25 @@ module.config(['$routeProvider', '$httpProvider', '$provide', 'localStorageServi
             return result;
         };
 
-        var clientIdentifier = randomString(25);
+        var clientSecret = localStorageService.get("client.secret");
+        if (!clientSecret) {
+            clientSecret = TokenService.randomString(25);
+            localStorageService.set("client.secret", clientSecret);
+        }
 
-        $provide.constant('CLIENT_IDENTIFIER', clientIdentifier);
-        $provide.constant('UPDATE_DELAY', 200);
-
-        $httpProvider.defaults.headers.common["X-Requested-With"] = 'XMLHttpRequest';
-        $httpProvider.defaults.headers.common["X-Client-Identifier"] = clientIdentifier;
-
-        localStorageServiceProvider.setPrefix('board');
-    }
-]);
+        TokenService.getClientSecret = function(){
+            return clientSecret;
+        };
+        
+        var clientIdentifier = TokenService.randomString(25);
+        
+        TokenService.getClientIdentifier = function(){
+            return clientIdentifier;
+        };
+        
+        return TokenService;
+    
+}]);
 
 module.controller("CreateBoardController", ['$scope', '$http', '$location', function ($scope, $http, $location) {
         $scope.createBoardForm = {};
@@ -326,7 +350,7 @@ module.factory('Post', ['$resource', 'Position', function ($resource, Position) 
         return Post;
     }]);
 
-module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER', function ($q, $timeout, Post, CLIENT_IDENTIFIER) {
+module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'tokenService', function ($q, $timeout, Post, tokenService) {
 
         var service = {};
         var listener = $q.defer();
@@ -355,22 +379,25 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
         };
 
         var startListener = function () {
-            socket.stomp.subscribe(service.BASE_TOPIC + 'boards/' + boardId, function (data) {
-                if (data.headers.sender && (data.headers.sender === CLIENT_IDENTIFIER)) {
+            socket.stomp.subscribe(service.BASE_TOPIC + 'boards.' + boardId, function (data) {
+                if (data.headers.sender && (data.headers.sender === tokenService.getClientIdentifier())) {
                     // Ignore events we sent ourself
                     return;
                 }
                 var envelope = JSON.parse(data.body);
                 envelope.payload = Post.build(envelope.payload);
                 listener.notify(envelope);
-            }, {'x-client-identifier': CLIENT_IDENTIFIER});
+            }, {'sender': tokenService.getClientIdentifier()});
         };
 
         var initialize = function () {
             socket.client = new SockJS(service.SOCKET_URL);
             socket.stomp = Stomp.over(socket.client);
-            socket.stomp.debug = false;
-            socket.stomp.connect({'x-client-identifier': CLIENT_IDENTIFIER}, startListener);
+            //socket.stomp.debug = false;
+            socket.stomp.connect({
+                'sender': tokenService.getClientIdentifier(),
+                'secret': tokenService.getClientSecret()
+            }, startListener);
             socket.client.onclose = reconnect;
         };
 
@@ -380,7 +407,15 @@ module.service("BoardLiveService", ['$q', '$timeout', 'Post', 'CLIENT_IDENTIFIER
         };
 
         service.sendTransientUpdate = function (post) {
-            socket.stomp.send(service.PREFIX + 'boards/' + boardId, {'x-client-identifier': CLIENT_IDENTIFIER}, JSON.stringify(post));
+            var msg = {
+                action: "UPDATE",
+                type: "Post",
+                payload: post
+            };
+            socket.stomp.send(
+                service.BASE_TOPIC + 'boards.' + boardId,
+                {'sender': tokenService.getClientIdentifier()},
+                JSON.stringify(msg));
         };
 
         return service;
@@ -393,7 +428,7 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
         $scope.remotePosts = currentBoard.posts;
 
 
-        var localStoredPosts = localStorageService.get($scope.board.uuid);
+        var localStoredPosts = localStorageService.get('board.' + $scope.board.uuid);
 
         if (localStoredPosts) {
             $scope.localPosts = localStoredPosts;
@@ -405,7 +440,7 @@ module.controller("BoardRouteController", ['$scope', 'Post', 'BoardLiveService',
         }
 
         $scope.$watch('localPosts', function (newValue) {
-            localStorageService.set($scope.board.uuid, newValue);
+            localStorageService.set('board.' + $scope.board.uuid, newValue);
         }, true);
 
 
